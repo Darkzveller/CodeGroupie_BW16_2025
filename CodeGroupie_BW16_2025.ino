@@ -2,11 +2,12 @@
 #include <WiFi.h>
 #include "FreeRTOS.h"
 #include "task.h"
+#include "ID_CAN.h"
 
 char* ssid = "cdf_crac";
 char* password = "cracadmin";
 char* wifiIP = "192.168.0.1";  // Adresse IP du serveur
-char* serverIP = "192.168.0.103";
+char* serverIP = "192.168.0.100";
 
 int wifiPort = 8080;    // Port utilisé pour tester la connexion WiFi
 int socketPort = 5050;  // Port utilisé pour le socket principal
@@ -15,6 +16,26 @@ WiFiClient wifiClient;    // Client pour tester la connexion WiFi (8080)
 WiFiClient socketClient;  // Client pour le vrai socket (5050)
 int i = 0;
 String role;
+
+
+uint16_t x = 1000;
+uint16_t y = 1400;
+
+uint8_t high_x;
+uint8_t low_x;
+uint8_t high_y;
+uint8_t low_y;
+
+convert_short_2_byte(x, y, &high_x, &low_x, &high_y, &low_y);
+
+uint8_t dataToSend[9] = {XYTHETA, high_x, low_x, high_y,low_y,0,0,0,0};
+
+uint8_t convert_short_2_byte(uint16_t short_2_transform_x,uint16_t short_2_transform_y, uint8_t* high_x, uint8_t* low_x, uint8_t* high_y, uint8_t* low_y)}{
+  *high_x = (short_2_transform_x >> 8) & 0xFF; // Poids fort
+  *low_x  = short_2_transform_x & 0xFF;        // Poids faible
+  *high_y = (short_2_transform_y >> 8) & 0xFF; // Poids fort
+  *low_y  = short_2_transform_y & 0xFF;        // Poids faible
+}
 
 void init_wifi(){
   // 🔹 Connexion au réseau WiFi
@@ -100,6 +121,7 @@ void setup() {
   init_wifi();
   // init_socket();
   // xTaskCreate(read_socket, "Socket", 4096, NULL, 2, 0);
+
 
 }
 
