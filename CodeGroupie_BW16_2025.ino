@@ -2,7 +2,8 @@
 #include <WiFi.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "ID_CAN.h"
+#include "ID_UART.h"
+
 
 char* ssid = "cdf_crac";
 char* password = "cracadmin";
@@ -17,20 +18,10 @@ WiFiClient socketClient;  // Client pour le vrai socket (5050)
 int i = 0;
 String role;
 
+uint8_t dataToSend[9] = {0,0,0,0,0,0,0,0,0};
 
-uint16_t x = 1000;
-uint16_t y = 1400;
 
-uint8_t high_x;
-uint8_t low_x;
-uint8_t high_y;
-uint8_t low_y;
-
-convert_short_2_byte(x, y, &high_x, &low_x, &high_y, &low_y);
-
-uint8_t dataToSend[9] = {XYTHETA, high_x, low_x, high_y,low_y,0,0,0,0};
-
-uint8_t convert_short_2_byte(uint16_t short_2_transform_x,uint16_t short_2_transform_y, uint8_t* high_x, uint8_t* low_x, uint8_t* high_y, uint8_t* low_y)}{
+uint8_t convert_short_2_byte(uint16_t short_2_transform_x,uint16_t short_2_transform_y, uint8_t* high_x, uint8_t* low_x, uint8_t* high_y, uint8_t* low_y){
   *high_x = (short_2_transform_x >> 8) & 0xFF; // Poids fort
   *low_x  = short_2_transform_x & 0xFF;        // Poids faible
   *high_y = (short_2_transform_y >> 8) & 0xFF; // Poids fort
@@ -117,8 +108,10 @@ void send_socket(void*){
 void setup() {
   
   Serial.begin(115200);
-  Serial1.begin(1000000);
-  init_wifi();
+   // Initialiser le port série 1 avec la vitesse en bauds (9600) et la configuration série
+  Serial1.begin(9600);  // Baudrate de 9600 et configuration série 8N1 (8 bits, aucune parité, 1 bit d'arrêt)
+
+  // init_wifi();
   // init_socket();
   // xTaskCreate(read_socket, "Socket", 4096, NULL, 2, 0);
 
@@ -126,5 +119,35 @@ void setup() {
 }
 
 void loop() {
+  if(Serial.available()){
+    char c = Serial.read();
+        if (c == 's')
+          {
+            Serial.println("send");
+            uint16_t x = 1000;
+            uint16_t y = 1400;
 
+            uint8_t high_x;
+            uint8_t low_x;
+            uint8_t high_y;
+            uint8_t low_y;
+
+            convert_short_2_byte(x, y, &high_x, &low_x, &high_y, &low_y);
+
+            dataToSend[0] = POLAIRE;
+            dataToSend[1] =  high_x;
+            dataToSend[2] =  low_x;
+            dataToSend[3] =  high_y;
+            dataToSend[4] =  low_y;
+
+            for(int i = 0; i < 9; i++){
+              Serial.print("send");
+              Serial.println(dataToSend[i]);
+              Serial1.write(dataToSend[i]);
+            }
+          }
+        }
+    if(Serial1.available()){
+      Serial.println(Serial1.read());
+    }
 }
