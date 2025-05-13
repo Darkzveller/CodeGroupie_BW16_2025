@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include "FreeRTOS.h"
 #include "task.h"
-#include "ID_UART.h"
+#include "ID_UART/ID_UART.h"
 
 
 char* ssid = "cdf_crac";
@@ -18,17 +18,22 @@ WiFiClient socketClient;  // Client pour le vrai socket (5050)
 int i = 0;
 String role;
 
-uint8_t dataToSend[9] = {0,0,0,0,0,0,0,0,0};
+uint8_t dataToSend[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
-uint8_t convert_short_2_byte(uint16_t short_2_transform_x,uint16_t short_2_transform_y, uint8_t* high_x, uint8_t* low_x, uint8_t* high_y, uint8_t* low_y){
-  *high_x = (short_2_transform_x >> 8) & 0xFF; // Poids fort
-  *low_x  = short_2_transform_x & 0xFF;        // Poids faible
-  *high_y = (short_2_transform_y >> 8) & 0xFF; // Poids fort
-  *low_y  = short_2_transform_y & 0xFF;        // Poids faible
+uint8_t convert_short_2_byte(uint16_t short_2_transform_x, uint16_t short_2_transform_y, uint8_t* high_x, uint8_t* low_x, uint8_t* high_y, uint8_t* low_y) {
+  *high_x = (short_2_transform_x >> 8) & 0xFF;  // Poids fort
+  *low_x = short_2_transform_x & 0xFF;          // Poids faible
+  *high_y = (short_2_transform_y >> 8) & 0xFF;  // Poids fort
+  *low_y = short_2_transform_y & 0xFF;          // Poids faible
 }
 
-void init_wifi(){
+uint8_t convert_short_1_byte(uint16_t short_2_transform, uint8_t* high, uint8_t* low) {
+  *high = (short_2_transform >> 8) & 0xFF;  // Poids fort
+  *low = short_2_transform & 0xFF;          // Poids faible
+}
+
+void init_wifi() {
   // 🔹 Connexion au réseau WiFi
   WiFi.begin(ssid, password);
   Serial.print(" Connexion au WiFi");
@@ -46,7 +51,7 @@ void init_wifi(){
   Serial.print("Connexion au serveur sur le port 8080... ");
   if (wifiClient.connect(wifiIP, wifiPort)) {
     Serial.println("Connexion réussie au port 8080 !");
-      wifiClient.println("Test connexion WiFi OK");
+    wifiClient.println("Test connexion WiFi OK");
   } else {
     Serial.println("Échec de connexion au port 8080.");
   }
@@ -67,27 +72,24 @@ void read_socket(void*) {
     if (socketClient.available()) {
       String response = socketClient.readString();
 
-      if(response == "START_PAMIS" ) {
-        if(role == "GROUPIE_ONE"){
-          
+      if (response == "START_PAMIS") {
+        if (role == "GROUPIE_ONE") {
         }
-        if(role == "GROUPIE_TWO"){
-
+        if (role == "GROUPIE_TWO") {
         }
-        if(role == "GROUPIE_THREE"){
-
+        if (role == "GROUPIE_THREE") {
         }
       }
 
-      if(response == "GROUPIE_ONE"){
+      if (response == "GROUPIE_ONE") {
         role = response;
       }
 
-      if(response == "GROUPIE_TWO"){
+      if (response == "GROUPIE_TWO") {
         role = response;
       }
 
-      if(response == "GROUPIE_THREE"){
+      if (response == "GROUPIE_THREE") {
         role = response;
       }
       //Serial.println("Réponse du serveur : " + response);
@@ -96,58 +98,127 @@ void read_socket(void*) {
   }
 }
 
-void send_socket(void*){
-  while(1){
-    if (socketClient.available()){
-
+void send_socket(void*) {
+  while (1) {
+    if (socketClient.available()) {
     }
     vTaskDelay(pdMS_TO_TICKS(100));  // Pause de 100ms
   }
 }
 
 void setup() {
-  
+
   Serial.begin(115200);
-   // Initialiser le port série 1 avec la vitesse en bauds (9600) et la configuration série
+  // Initialiser le port série 1 avec la vitesse en bauds (9600) et la configuration série
   Serial1.begin(9600);  // Baudrate de 9600 et configuration série 8N1 (8 bits, aucune parité, 1 bit d'arrêt)
 
   // init_wifi();
   // init_socket();
   // xTaskCreate(read_socket, "Socket", 4096, NULL, 2, 0);
-
-
 }
 
 void loop() {
-  if(Serial.available()){
+  if (Serial.available()) {
     char c = Serial.read();
-        if (c == 's')
-          {
-            Serial.println("send");
-            uint16_t x = 1000;
-            uint16_t y = 1400;
-
-            uint8_t high_x;
-            uint8_t low_x;
-            uint8_t high_y;
-            uint8_t low_y;
-
-            convert_short_2_byte(x, y, &high_x, &low_x, &high_y, &low_y);
-
-            dataToSend[0] = POLAIRE;
-            dataToSend[1] =  high_x;
-            dataToSend[2] =  low_x;
-            dataToSend[3] =  high_y;
-            dataToSend[4] =  low_y;
-
-            for(int i = 0; i < 9; i++){
-              Serial.print("send");
-              Serial.println(dataToSend[i]);
-              Serial1.write(dataToSend[i]);
-            }
-          }
-        }
-    if(Serial1.available()){
-      Serial.println(Serial1.read());
+    if (c == 'p') {
+      Serial.println("send");
+      uint16_t x = 1000;
+      uint16_t y = 1400;
+      polaire(x, y);
+      send_automatical_uart();
     }
+    if (c == 'r') {
+      Serial.println("send");
+      uint16_t new_value = 1000;
+
+      recalage(1, 1, new_value, 0);
+      send_automatical_uart();
+    }
+    if (c == 'd') {
+      Serial.println("send");
+      uint16_t distance = 1000;
+
+      ligne_droite(distance);
+      send_automatical_uart();
+    }
+
+    if (c == 'R') {
+      Serial.println("send");
+      uint16_t rotate = 90;
+
+      rotation(rotate);
+      send_automatical_uart();
+    }
+  }
+  if (Serial1.available()) {
+    Serial.println(Serial1.read());
+  }
+}
+
+void send_automatical_uart() {
+  for (int i = 0; i < 9; i++) {
+    Serial.print("send");
+    Serial.println(dataToSend[i]);
+    Serial1.write(dataToSend[i]);
+  }
+}
+
+void polaire(uint16_t x, uint16_t y) {
+  uint8_t high_x;
+  uint8_t low_x;
+  uint8_t high_y;
+  uint8_t low_y;
+
+  convert_short_2_byte(x, y, &high_x, &low_x, &high_y, &low_y);
+
+  dataToSend[0] = POLAIRE;
+  dataToSend[1] = high_x;
+  dataToSend[2] = low_x;
+  dataToSend[3] = high_y;
+  dataToSend[4] = low_y;
+}
+void recalage(uint8_t direction, uint8_t type_modif, uint16_t nouvelle_valeur, uint16_t consigne_rotation) {
+
+  uint8_t high;
+  uint8_t low;
+  uint8_t high_rot;
+  uint8_t low_rot;
+
+  convert_short_1_byte(nouvelle_valeur, &high, &low);
+  convert_short_1_byte(consigne_rotation, &high_rot, &low_rot);
+
+  dataToSend[0] = RECALAGE;
+  dataToSend[1] = direction;
+  dataToSend[2] = type_modif;
+  dataToSend[3] = high;
+  dataToSend[4] = low;
+  dataToSend[5] = high_rot;
+  dataToSend[6] = low_rot;
+  // dataToSend[7] = ;
+  // dataToSend[8] = ;
+  // dataToSend[9] = ;
+}
+
+void ligne_droite(uint16_t cons_distance) {
+  uint8_t high_cons_distance;
+  uint8_t low_cons_distance;
+
+  convert_short_1_byte(cons_distance, &high_cons_distance, &low_cons_distance);
+
+  dataToSend[0] = LIGNE_DROITE;
+  dataToSend[1] = high_cons_distance;
+  dataToSend[2] = low_cons_distance;
+  dataToSend[3] = 50;
+}
+
+void rotation(uint16_t cons_rotation) {
+  uint8_t high_rotation;
+  uint8_t low_rotation;
+
+  convert_short_1_byte(cons_rotation, &high_rotation, &low_rotation);
+
+  dataToSend[0] = ROTATION;
+  dataToSend[1] = high_rotation;
+  dataToSend[2] = low_rotation;
+  dataToSend[3] = 50;
 }
